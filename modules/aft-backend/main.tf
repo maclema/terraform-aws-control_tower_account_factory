@@ -78,6 +78,7 @@ resource "aws_s3_bucket_public_access_block" "primary-backend-bucket" {
 }
 
 resource "aws_s3_bucket" "secondary-backend-bucket" {
+  count    = var.secondary_region != var.primary_region ? 1 : 0
   provider = aws.secondary_region
   bucket   = "aft-backend-${data.aws_caller_identity.current.account_id}-secondary-region"
   tags = {
@@ -86,6 +87,7 @@ resource "aws_s3_bucket" "secondary-backend-bucket" {
 }
 
 resource "aws_s3_bucket_versioning" "secondary-backend-bucket-versioning" {
+  count    = var.secondary_region != var.primary_region ? 1 : 0
   provider = aws.secondary_region
   bucket   = aws_s3_bucket.secondary-backend-bucket.id
   versioning_configuration {
@@ -94,6 +96,7 @@ resource "aws_s3_bucket_versioning" "secondary-backend-bucket-versioning" {
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "secondary-backend-bucket-encryption" {
+  count    = var.secondary_region != var.primary_region ? 1 : 0
   provider = aws.secondary_region
   bucket   = aws_s3_bucket.secondary-backend-bucket.id
 
@@ -106,6 +109,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "secondary-backend
 }
 
 resource "aws_s3_bucket_acl" "secondary-backend-bucket-acl" {
+  count    = var.secondary_region != var.primary_region ? 1 : 0
   provider = aws.secondary_region
   bucket   = aws_s3_bucket.secondary-backend-bucket.id
   acl      = "private"
@@ -114,6 +118,7 @@ resource "aws_s3_bucket_acl" "secondary-backend-bucket-acl" {
 
 
 resource "aws_s3_bucket_public_access_block" "secondary-backend-bucket" {
+  count    = var.secondary_region != var.primary_region ? 1 : 0
   provider = aws.secondary_region
 
   bucket = aws_s3_bucket.secondary-backend-bucket.id
@@ -268,8 +273,11 @@ resource "aws_dynamodb_table" "lock-table" {
     type = "S"
   }
 
-  replica {
-    region_name = var.secondary_region
+  dynamic "replica" {
+    for_each = var.secondary_region != var.primary_region ? [1] : []
+    content {
+      region_name = var.secondary_region
+    }
   }
 
   tags = {
@@ -299,6 +307,7 @@ resource "aws_kms_alias" "encrypt-alias-primary-region" {
 }
 
 resource "aws_kms_key" "encrypt-secondary-region" {
+  count    = var.secondary_region != var.primary_region ? 1 : 0
   provider = aws.secondary_region
 
   description             = "Terraform backend KMS key."
@@ -310,6 +319,7 @@ resource "aws_kms_key" "encrypt-secondary-region" {
 }
 
 resource "aws_kms_alias" "encrypt-alias-secondary-region" {
+  count    = var.secondary_region != var.primary_region ? 1 : 0
   provider = aws.secondary_region
 
   name          = "alias/aft-backend-${data.aws_caller_identity.current.account_id}-kms-key"
